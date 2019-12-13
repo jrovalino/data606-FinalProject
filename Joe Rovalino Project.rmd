@@ -1,0 +1,217 @@
+---
+title: "Data606 Project"
+author: "Joe Rovalino"
+date: "12/8/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+### Part 1 - Introduction
+What is your research question?
+
+Which majors/Major categories should a young female choose to increase earning potential and face less competition as a female in the field. 
+
+Why do you care?
+
+The project was prompted from reading the following article "The Economic Guide to Picking A College Major"
+Ths was interesting to me on a personal level due to the fact that my niece entered college this year and chose to go to a 2 year college to reduce the loans that she would incur. She did come to me for advice on her next steps and choosing a major. I wasn't really sure what would be the best major she should chose.  This was a very interesting article that prompted my curiousity to get some data driven answers to her. I have shared the article with her and will hopefully find similiar conclusions from the article. 
+
+Why should others care?
+
+There are numerous articles in the papers of our young population having huge debt in the pursuit of a good paying career via education. I feel that if you are going to take away 4-8 years away from your job earning years-it should have a great return on investment (ROI).  As a society, having our young people in debt for something that just gives a very poor ROI is a recipe for a weak and unhapy country in the future.
+
+### Part 2 - Data
+
+The data found on fivethirtyeight.com article:
+https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/
+Data is found here:
+https://github.com/fivethirtyeight/data/tree/master/college-majors
+
+Three main data files:
+- all-ages.csv
+- recent-grads.csv (ages <28)
+- grad-students.csv (ages 25+)
+
+All contain basic earnings and labor force information. recent-grads.csv contains a more detailed breakdown, including by sex and by the type of job they got. grad-students.csv contains details on graduate school attendees.  The data set most intereting to my need to get back some info to my niece is the recent-grads.csv.
+
+For the data in datafile -  recent grads under the age of 28, there are 173 majors in the data set.
+The response variable is the major code, major and the major category. It is qualitative.
+The quantitative independet variables are total, Sample_size, ShareWomen, Employed, Full-time, Part-time, Full_time_year_round, Unemployed, Unemployment_rate, Median, P25th, P75th, College, jobs, Non-college_jobs, Low_wage_job
+
+```{r , echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+library(tidyr)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+
+
+
+```{r}
+# load data
+majors <- read_csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/all-ages.csv")
+head(majors)
+#women_stem <- read_csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/women-stem.csv")
+#head(women_stem)
+recentgrads <- read_csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/recent-grads.csv")
+head(recentgrads)
+```
+
+
+### Part 3 - Exploratory data analysis
+```{r}
+summary(recentgrads)
+
+top5majorsbyPay<- top_n(recentgrads, 5, Median)
+top5majorsbyPay
+
+top5majorswhighunempl <- top_n(recentgrads, 5, Unemployment_rate)
+top5majorswhighunempl
+
+# using the sammary function on recent grads. Will create a data frame to only include the majors with a median pay greater than the mean of 40,151
+overmeanpayingmajors <- filter(recentgrads, Median > 40151)
+#reduces the number of majors to focus on from 173 down to 56
+top5wMedian <- top_n(overmeanpayingmajors, 5, Median)
+top5wMedian
+
+
+
+
+```
+It looks like median unemployement is approximately 20% less for the top 5 majors compared to overall recent grads (0.05561/0.6819). 
+
+It also looks like median Share of Women is approximately 25% less in the top 5 paid majors then compared to overall recent grads (.1328/.5340)
+
+
+```{r}
+summary(recentgrads$Unemployment_rate)
+summary(overmeanpayingmajors$Unemployment_rate)
+summary(top5wMedian$Unemployment_rate)
+
+ChanceofUnemployment <- cbind(recentgrads$Unemployment_rate, overmeanpayingmajors$Unemployment_rate, top5wMedian$Unemployment_rate)
+boxplot(ChanceofUnemployment,names = c("All", "Above Median Pay", "Top5Majors"), ylab = "Unemployment Rate")
+
+summary(recentgrads$ShareWomen)
+summary(overmeanpayingmajors$ShareWomen)
+summary(top5wMedian$ShareWomen)
+
+ShareofWomen <- cbind(recentgrads$ShareWomen, overmeanpayingmajors$ShareWomen, top5wMedian$ShareWomen)
+boxplot(ShareofWomen,names = c("All", "Above Median Pay", "Top5Majors"), ylab = "ShareofWomen")
+```
+It looks like median unemployement is approximately 20% less for the top 5 majors compared to overall recent grads (0.05561/0.6819). 
+
+It also looks like median Share of Women is approximately 25% less in the top 5 paid majors then compared to overall recent grads (.1328/.5340)
+
+```{r}
+options(scipen = 999) 
+
+gg <- ggplot(overmeanpayingmajors, aes(x=ShareWomen, y=Median)) + 
+  geom_point(aes(col=ShareWomen, size=Median)) + 
+  geom_smooth(method="loess", se=F) 
+  labs(subtitle="SHare of Women by Median pay", 
+       y="Median Pay", 
+       x="Share of Women", 
+       title="Scatterplot", 
+       caption = "Source: DF overmeanpayingmajors")
+  require(scales)
+  gg + scale_y_continuous(labels = comma) 
+
+plot(gg)
+
+```
+The histogram will show a normal distribution unimodal with some slight right skwe. 
+
+```{r}
+hist(recentgrads$Median, main = "Median Income for recent grads < 28", xlab = "Median Income for recent grads < 28", col = " navy")
+hist(top5wMedian$Median, main = "Median Income for Top5 majors for grads <28", xlab = "Median for top 5 majors for grads <29", col = "dark green")
+
+```
+
+
+### Part 4 - Inference
+
+This is an observational study of the college majors and the income.  From our textbook, Open Intro Statistics chapter 7.5 Comparing many means wiht ANOVA: 
+ "Generally we must check three conditions on the data before performing ANOVA:
+ 
+* the observations are independent within and across groups,
+
+• the data within each group are nearly normal, and
+
+• the variability across the groups is about equal."
+
+```{r}
+
+Majorcategory_mean_variance <- summarize(recentgrads %>% group_by(Major_category), mean = mean(Median))
+Majorcategory_mean_variance
+                        
+```
+
+Looking at the analytis of the group of  major category and it's mean, it appears that the variability across the groups is about equal 
+
+1) We see from the data that each major is indepedent
+2) Reviewing the histograms we can see that the distribution of the median salary is a normal distribtion. 
+3) check the variability is about equal using and F-Test
+
+
+Arts, Social Science & Humanities = 1
+Arts = 2
+Biology and Life Sciences = 3
+business = 4
+Communications & Journalism = 5
+Computers and Mathematics = 6
+Education = 7
+Engineering = 8
+Health = 9
+Humanities and Liberal Arts = 10
+Industrial Arts and Consumer Services = 11
+Indterdisciplinary = 12
+Law & Public Policy = 13
+Physical Sciences = 14
+Psychology and Social Work = 15
+Social Science  = 16
+
+Hypothesis null and Hypothesis Alternative - 
+H0:  μArts, So  = μ1 = μ2 = μ3 ...= μ16
+HA: Median salary varies by major selected. 
+
+```{r}
+summary(aov(recentgrads$Median ~ recentgrads$Major_category))
+```
+Per our textbook (pg 289), we will use the F statistic also called the F-Test to come to a conclusion that the alternative hypothesis is the correct choice as the p value is close to zero (0.0000000000000002). Median salary is not the same across majors. 
+
+### Part 5 - Conclusion
+
+1) Stick to Engineering and Technology - it will lead to higher paying jobs as an undergrad and have the least Share of women. 
+2) Looking at ratios of men to women to decide on picking a major may help to stand out as a women. Engineering majors tend to have a low percentage of men to woemen. there are culture trends related to woment diversity inititives like #girlpower and #equalpay. It may be beneficial to try to enter the workforce in a male dominted major as it could be a good way to stand out from other applicants. 
+
+
+
+### References
+
+1) https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/
+by Ben Casselmen
+
+2) All data is from American Community Survey 2010-2012 Public Use Microdata Series.
+
+Download data here: http://www.census.gov/programs-surveys/acs/data/pums.html
+
+Documentation here: http://www.census.gov/programs-surveys/acs/technical-documentation/pums.html
+
+3) Open Intro Statistics 4th Ed. by David Diez, Mine Cetinkaya-Rundel and Christpher Bar
+Chapter 7 "Comparing many means wiht ANOVA
+
+4) Shiny App:
+https://bencasselman.shinyapps.io/new-test/
+
